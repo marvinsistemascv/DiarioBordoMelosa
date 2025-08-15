@@ -16,6 +16,7 @@ public class AbastecimentoModel {
     public String data_abastecimento;
     public String hora_abastecimento;
     public String motorista_melosa;
+    public String melosa;
     public Double qtd_litros;
     public Double km_horimetro;
     public String sit;

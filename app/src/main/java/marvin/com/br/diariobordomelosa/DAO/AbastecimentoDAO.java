@@ -23,4 +23,7 @@ public interface AbastecimentoDAO {
 
     @Query("SELECT * FROM abastecimento_model where sit = 'realizado'")
     List<AbastecimentoModel> pegar_abastecimentos_realizados();
+
+    @Query("DELETE FROM abastecimento_model WHERE sit = 'sincronizado' ")
+    void apagar_sincronizados();
 }

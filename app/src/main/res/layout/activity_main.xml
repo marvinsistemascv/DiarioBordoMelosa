@@ -33,7 +33,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="40dp"
         android:gravity="center"
-        android:text="versão"
+        android:text="v 3.0.0"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
         app:layout_constraintBottom_toTopOf="@+id/txt_nome_motorista"
@@ -46,7 +46,7 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:padding="8dp"
-        android:text="Operador"
+        android:text="Motorista"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -59,14 +59,14 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:text="Local Obra"
+        android:padding="8dp"
+        android:text="Melosa"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/txt_nome_motorista"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_weight="1"
-        android:padding="8dp" />
+        app:layout_constraintStart_toEndOf="@+id/txt_nome_motorista" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

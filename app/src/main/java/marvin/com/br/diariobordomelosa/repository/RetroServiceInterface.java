@@ -14,7 +14,7 @@ public interface RetroServiceInterface {
     @GET("/app_obras/versao_app")
     Call<VersaoResponse> verificarVersao();
 
-    @POST("/app_obras/sincronizar")
+    @POST("/app_obras/sincronizar_abastecimentos")
     Call<ResponseBody> sincronizarTudo(@Body SincronizacaoRequest request);
 
 }

@@ -23,6 +23,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DiarioBordoMelosa" >
         <activity
+            android:name=".activity_qr_scanner"
+            android:exported="false" />
+        <activity
+            android:name=".QrScannerActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.DiarioBordoMelosa" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
@@ -31,9 +39,5 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".activity_qr_scanner"
-            android:exported="false" />
     </application>
-
 </manifest>
