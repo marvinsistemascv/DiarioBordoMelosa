@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="6dp"
+    android:layout_margin="12dp"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header com título e botão fechar -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/dialogTituloAbastecimento"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:text="Lançamento de Manutenção"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/btnFecharDialogSeletorAbasteceManutencao"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_alignParentEnd="true"
+                android:src="@drawable/ic_fechar"/>
+        </RelativeLayout>
+
+        <!-- Campo descrição -->
+        <EditText
+            android:id="@+id/inputDescricaoItemManutencao"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Descrição do item"
+            android:inputType="text"
+            android:layout_marginTop="12dp"/>
+
+        <!-- Linha quantidade + unidade + botão adicionar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/inputQtdItem"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Qtd"
+                android:inputType="numberDecimal"/>
+
+            <Spinner
+                android:id="@+id/sp_un_medida_i"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"/>
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/btnGravaItem"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                app:srcCompat="@drawable/ic_add_item"
+                app:backgroundTint="@color/teal_700"
+                app:fabSize="mini"/>
+        </LinearLayout>
+
+        <!-- Mensagem de erro -->
+        <TextView
+            android:id="@+id/tvErroUnidade"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/holo_red_dark"
+            android:textSize="12sp"
+            android:visibility="gone"
+            android:layout_marginTop="4dp"/>
+
+        <!-- Lista dinâmica -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerItensManutencao"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_recycler_box"
+            android:padding="8dp"/>
+
+        <!-- Botão confirmar -->
+        <Button
+            android:id="@+id/btnConfirmarManutencao"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@color/alert_orange"
+            android:text="Concluir manutenção"
+            android:textAllCaps="false"
+            android:textSize="18sp"
+            android:textColor="@android:color/white"/>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

@@ -9,6 +9,8 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
@@ -16,10 +18,13 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -28,18 +33,26 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.room.Room;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+import marvin.com.br.diariobordomelosa.Adapter.ItemLctoAdapter;
 import marvin.com.br.diariobordomelosa.DAO.ApiClient;
 import marvin.com.br.diariobordomelosa.DAO.AppDatabase;
 import marvin.com.br.diariobordomelosa.model.AbastecimentoModel;
+import marvin.com.br.diariobordomelosa.model.ManutencaoItem;
+import marvin.com.br.diariobordomelosa.model.ManutencaoModel;
 import marvin.com.br.diariobordomelosa.model.MotoristaModel;
 import marvin.com.br.diariobordomelosa.model.SincronizacaoRequest;
 import marvin.com.br.diariobordomelosa.repository.RetroServiceInterface;
@@ -71,12 +84,72 @@ public class MainActivity extends AppCompatActivity {
                         MediaPlayer mp = MediaPlayer.create(this, R.raw.camera_som);
                         mp.setOnCompletionListener(MediaPlayer::release);
                         mp.start();
-                        fazer_novo_abastecimento(veiculoId);
+
+                        View viewInflated = LayoutInflater.from(this)
+                                .inflate(R.layout.dialog_abastece_manutencao, null);
+
+                        Button btnAbastecer = viewInflated.findViewById(R.id.btnNovoAbastecimento);
+                        Button btnManutencao = viewInflated.findViewById(R.id.btnNovaManutencao);
+                        ImageButton btnFecha = viewInflated.findViewById(R.id.btnFecharLcto);
+
+
+                        dialog = new AlertDialog.Builder(this)
+                                .setView(viewInflated)
+                                .create();
+
+                        dialog.show();
+                        if (dialog.getWindow() != null) {
+                            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                        }
+                        // impede fechar tocando fora
+                        dialog.setCanceledOnTouchOutside(false);
+                        // impede fechar pelo botão "voltar"
+                        //dialog.setCancelable(false);
+
+                        btnAbastecer.setOnClickListener(v -> {
+                            fazer_novo_abastecimento(veiculoId);
+                        });
+
+                        btnManutencao.setOnClickListener(v -> {
+                            abrir_nova_manutencao(veiculoId);
+                        });
+                        btnFecha.setOnClickListener(v -> {
+                            dialog.dismiss();
+                        });
+
                     } else {
                         Toast.makeText(this, "QR inválido", Toast.LENGTH_SHORT).show();
                     }
                 }
             });
+
+    public void cancelar_manutencao() {
+        io.execute(() -> {
+            try {
+                ManutencaoModel manutencao = db.manutencaoDAO().pegar_ultima_manutencao();
+                if (manutencao == null) {
+                    runOnUiThread(() -> showToast("Nenhuma manutenção para cancelar"));
+                    return;
+                }
+
+                List<ManutencaoItem> itens = db.manutencaoItemDAO().pegar_itens_manutencao(manutencao.id);
+                if (itens != null && !itens.isEmpty()) {
+                    List<Integer> ids = itens.stream()
+                            .map(item -> item.id)
+                            .collect(Collectors.toList());
+
+                    db.manutencaoItemDAO().apagar_itens_manutencao(ids);
+                }
+
+                db.manutencaoDAO().cancelar_manutencao(manutencao.id);
+
+                runOnUiThread(() -> showToast("Manutenção cancelada com sucesso"));
+
+            } catch (Exception ex) {
+                runOnUiThread(() -> showToast("Erro ao cancelar manutenção: " + ex.getMessage()));
+            }
+        });
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,7 +159,6 @@ public class MainActivity extends AppCompatActivity {
 
         retrofit = ApiClient.getClient(this);
         service = retrofit.create(RetroServiceInterface.class);
-
 
         txtVersao = findViewById(R.id.txtVersao);
         txtMotorista = findViewById(R.id.txt_nome_motorista);
@@ -131,6 +203,176 @@ public class MainActivity extends AppCompatActivity {
                 } else if (!pediuCadastroEncarregado) {
                     pediuCadastroEncarregado = true;
                     abrir_cadastro_motorista();
+                }
+            });
+        });
+    }
+
+    private void abrir_nova_manutencao(Integer cod_veiculo) {
+
+        ManutencaoModel m = new ManutencaoModel();
+
+        m.data_manutencao = DataHora.data_atual();
+        m.hora_manutencao = DataHora.pegar_hora();
+        m.cod_veiculo = cod_veiculo;
+        m.melosa = txtPlacaMelosa.getText().toString().trim();
+        m.motorista_melosa = txtMotorista.getText().toString().trim();
+        m.sit = "realizado";
+
+
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            try {
+                long idGerado = db.manutencaoDAO().inserir(m);
+                m.id = Integer.parseInt(String.valueOf(idGerado));
+                runOnUiThread(() -> {
+                    lancar_itens_manutencao(m);
+                });
+            } catch (Exception ex) {
+                runOnUiThread(() -> {
+                    new AlertDialog.Builder(this)
+                            .setTitle("ERRO")
+                            .setIcon(R.drawable.ic_atencao)
+                            .setMessage("Erro ao gravar nova manuntenção: " + ex.getMessage())
+                            .setPositiveButton("ENTENDI", null)
+                            .create()
+                            .show();
+                });
+            }
+        });
+
+    }
+
+    private void lancar_itens_manutencao(ManutencaoModel m) {
+        if (isFinishing() || isDestroyed()) return;
+
+        View viewInflated = LayoutInflater.from(this)
+                .inflate(R.layout.dialog_lancar_manutencao, null);
+
+        EditText desc_item = viewInflated.findViewById(R.id.inputDescricaoItemManutencao);
+        EditText qtd_item = viewInflated.findViewById(R.id.inputQtdItem);
+        TextView tvErroUnidade = viewInflated.findViewById(R.id.tvErroUnidade);
+        ImageButton btn_incluir_item = viewInflated.findViewById(R.id.btnGravaItem);
+        ImageButton btn_fechar = viewInflated.findViewById(R.id.btnFecharDialogSeletorAbasteceManutencao);
+        Spinner spUnidade = viewInflated.findViewById(R.id.sp_un_medida_i);
+        RecyclerView recyclerView = viewInflated.findViewById(R.id.recyclerItensManutencao);
+        Button btnConcluirManutencao = viewInflated.findViewById(R.id.btnConfirmarManutencao);
+
+        // popula spinner
+        ArrayAdapter<CharSequence> adapterSp = ArrayAdapter.createFromResource(
+                this,
+                R.array.un_medida_item,
+                android.R.layout.simple_spinner_item
+        );
+        adapterSp.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spUnidade.setAdapter(adapterSp);
+
+        // prepara lista e adapter
+        List<ManutencaoItem> itensExistentes = new ArrayList<>();
+        ItemLctoAdapter adapter = new ItemLctoAdapter(itensExistentes, this);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setAdapter(adapter);
+
+        // carrega itens existentes dessa manutenção em background
+        io.execute(() -> {
+            List<ManutencaoItem> carregados = db.manutencaoItemDAO().pegar_itens_manutencao(m.id);
+            runOnUiThread(() -> {
+                itensExistentes.clear();
+                itensExistentes.addAll(carregados);
+                adapter.notifyDataSetChanged();
+            });
+        });
+
+
+        // cria e exibe o dialog
+        dialog = new AlertDialog.Builder(this)
+                .setView(viewInflated)
+                .create();
+
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setCancelable(false);
+
+        btnConcluirManutencao.setOnClickListener(v -> {
+
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Concluir")
+                    .setMessage("todos os itens foram lançados?")
+                    .setIcon(R.drawable.ic_question)
+                    .setPositiveButton("Sim", (dialog, which) -> {
+                        // Reinicia a activity atual
+                        Intent intent = getIntent();
+                        finish(); // encerra a atual
+                        startActivity(intent); // recria a mesma
+                    })
+
+                    .setNegativeButton("Não", null)
+                    .show();
+        });
+
+        btn_fechar.setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                    .setTitle("Sair do lançamento")
+                    .setIcon(R.drawable.ic_atencao)
+                    .setMessage("Cancelar a manutenção?")
+                    .setPositiveButton("Sim", (d, which) -> {
+                        cancelar_manutencao();
+                        dialog.dismiss();
+                    })
+                    .setNegativeButton("Não", (d, which) -> d.dismiss())
+                    .show();
+        });
+
+        // botão incluir item
+        btn_incluir_item.setOnClickListener(v -> {
+            String descricao = desc_item.getText().toString().trim();
+            String qtd = qtd_item.getText().toString().trim();
+            String un = spUnidade.getSelectedItem().toString();
+
+            if (descricao.isEmpty()) {
+                desc_item.setError("Informe a descrição");
+                return;
+            }
+            if (qtd.isEmpty()) {
+                qtd_item.setError("Informe a qtd");
+                return;
+            }
+            if (un.isEmpty() || un.equals("Un medida")) {
+                tvErroUnidade.setText("Informe a unidade");
+                tvErroUnidade.setVisibility(View.VISIBLE);
+                return;
+            } else {
+                tvErroUnidade.setVisibility(View.GONE);
+            }
+
+            io.execute(() -> {
+                try {
+                    ManutencaoItem item = new ManutencaoItem();
+                    item.descricao = descricao;
+                    item.manutencaoId = m.id;
+                    item.quantidade = Double.parseDouble(qtd.replace(",", "."));
+                    item.unidade = un;
+                    item.sit = "lancado";
+
+                    long idGerado = db.manutencaoItemDAO().inserir(item);
+                    item.id = (int) idGerado;
+
+                    runOnUiThread(() -> {
+                        itensExistentes.add(item);
+                        adapter.notifyItemInserted(itensExistentes.size() - 1);
+                        recyclerView.scrollToPosition(itensExistentes.size() - 1);
+
+                        // limpa campos
+                        desc_item.setText("");
+                        qtd_item.setText("");
+                        spUnidade.setSelection(0);
+                    });
+                } catch (Exception ex) {
+                    runOnUiThread(() -> {
+                        showToastErro(ex.getMessage());
+                    });
                 }
             });
         });
@@ -232,7 +474,6 @@ public class MainActivity extends AppCompatActivity {
         EditText inputKmHorimetro = viewInflated.findViewById(R.id.inputKmHorimetro);
 
         Button btnAdicionar = viewInflated.findViewById(R.id.btnGravaAbastecimento);
-        //Button btnCancelar = viewInflated.findViewById(R.id.btnCancelar);
 
 
         dialog = new AlertDialog.Builder(this)
@@ -276,7 +517,7 @@ public class MainActivity extends AppCompatActivity {
                         String valorStr = km_horimentro.trim().replace(",", ".");
                         String litros = qtd_litros.trim().replace(",", ".");
                         a.km_horimetro = valorStr.isEmpty() ? 0.0 : Double.parseDouble(valorStr);
-                        a.qtd_litros = litros.isEmpty() ? 0.0 : Double.parseDouble(valorStr);
+                        a.qtd_litros = litros.isEmpty() ? 0.0 : Double.parseDouble(litros);
                     } catch (NumberFormatException e) {
                         a.km_horimetro = 0.0;
                         a.qtd_litros = 0.0;
@@ -389,6 +630,78 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private void ver_manutencoes() {
+        new Thread(() -> {
+            List<ManutencaoItem> lista = db.manutencaoItemDAO().pegar_todas_realizadas();
+
+            runOnUiThread(() -> {
+                LayoutInflater inflater = LayoutInflater.from(this);
+                View view = inflater.inflate(R.layout.dialog_lista_abastecimentos, null);
+                LinearLayout layout = view.findViewById(R.id.layout_lista_abastecimentos);
+
+                // Cabeçalho
+                LinearLayout linhaCabecalho = new LinearLayout(this);
+                linhaCabecalho.setOrientation(LinearLayout.HORIZONTAL);
+
+                TextView cabecalho1 = new TextView(this);
+                cabecalho1.setText("Descrição");
+                cabecalho1.setPadding(8, 8, 8, 8);
+                cabecalho1.setTypeface(Typeface.DEFAULT_BOLD);
+                cabecalho1.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+                TextView cabecalho2 = new TextView(this);
+                cabecalho2.setText("Qtd");
+                cabecalho2.setPadding(8, 8, 8, 8);
+                cabecalho2.setTypeface(Typeface.DEFAULT_BOLD);
+                cabecalho2.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+                TextView cabecalho3 = new TextView(this);
+                cabecalho3.setText("Un");
+                cabecalho3.setPadding(8, 8, 8, 8);
+                cabecalho3.setTypeface(Typeface.DEFAULT_BOLD);
+                cabecalho3.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+                linhaCabecalho.addView(cabecalho1);
+                linhaCabecalho.addView(cabecalho2);
+                linhaCabecalho.addView(cabecalho3);
+                layout.addView(linhaCabecalho);
+
+                // Linhas de dados
+                for (ManutencaoItem prop : lista) {
+                    LinearLayout linha = new LinearLayout(this);
+                    linha.setOrientation(LinearLayout.HORIZONTAL);
+
+                    TextView col1 = new TextView(this);
+                    col1.setText(String.valueOf(prop.descricao));
+                    col1.setPadding(8, 8, 8, 8);
+                    col1.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+                    TextView col2 = new TextView(this);
+                    col2.setText(prop.quantidade != null ? String.valueOf(prop.quantidade) : "");
+                    col2.setPadding(8, 8, 8, 8);
+                    col2.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+                    TextView col3 = new TextView(this);
+                    col3.setText(prop.unidade != null ? String.valueOf(prop.unidade) : "");
+                    col3.setPadding(8, 8, 8, 8);
+                    col3.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+                    linha.addView(col1);
+                    linha.addView(col2);
+                    linha.addView(col3);
+
+                    layout.addView(linha);
+                }
+
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle("Manutenções")
+                        .setView(view)
+                        .setPositiveButton("Fechar", null)
+                        .show();
+            });
+        }).start();
+    }
+
     private void showToast(String msge) {
         android.app.AlertDialog.Builder msg = new android.app.AlertDialog.Builder(this);
         msg.setTitle("Sucesso");
@@ -421,14 +734,18 @@ public class MainActivity extends AppCompatActivity {
             ver_abastecimentos();
             return true;
         }
-
-
         if (id == R.id.menu_option_1) {
+            ver_manutencoes();
+            return true;
+        }
+
+
+        if (id == R.id.menu_option_2) {
             abrir_cadastro_motorista();
             return true;
         }
 
-        if (id == R.id.menu_option_2) {
+        if (id == R.id.menu_option_3) {
             new AlertDialog.Builder(this)
                     .setTitle("Sincronizar")
                     .setMessage("Deseja sincronizar os dados?")
@@ -440,7 +757,7 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
 
-        if (id == R.id.menu_option_3) {
+        if (id == R.id.menu_option_4) {
             new AlertDialog.Builder(this)
                     .setTitle("*ATENÇÂO*")
                     .setMessage("este procedimento exclui os abastecimentos sincronizados! confirma?")
@@ -455,74 +772,122 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void sincronizar_cadastros() {
-        // Usar ProgressBar/AlertDialog custom no lugar de ProgressDialog
         ProgressDialog progressDialog = new ProgressDialog(this);
         progressDialog.setMessage("Enviando dados... Aguarde.");
         progressDialog.setCancelable(false);
         progressDialog.show();
 
         new Thread(() -> {
+            // 🔹 Busca no banco (thread secundária)
             List<AbastecimentoModel> cadastros = db.abastecimentoDAO().pegar_abastecimentos_realizados();
+            List<ManutencaoModel> manutencoes = db.manutencaoDAO().pegar_manutencoes_realizadas();
 
-            if (cadastros == null || cadastros.isEmpty()) {
+            List<Integer> ids_manutencao = manutencoes.stream()
+                    .map(item -> item.id)
+                    .collect(Collectors.toList());
+
+            final List<ManutencaoItem> itens_manutencao;
+            if (ids_manutencao != null && !ids_manutencao.isEmpty()) {
+                itens_manutencao = db.manutencaoItemDAO().pegar_itens_manutencoes_realizadas(ids_manutencao);
+            } else {
+                itens_manutencao = Collections.emptyList();
+            }
+
+
+            // ⚠️ Verifica se tem algo pra sincronizar
+            if ((cadastros == null || cadastros.isEmpty()) &&
+                    (manutencoes == null || manutencoes.isEmpty())) {
+
                 runOnUiThread(() -> {
                     progressDialog.dismiss();
-                    new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                    new AlertDialog.Builder(MainActivity.this)
                             .setTitle("OPS")
-                            .setMessage("Não há abastecimentos para sincronizar!")
+                            .setMessage("Não há dados para sincronizar!")
                             .setIcon(R.drawable.ic_atencao)
                             .setPositiveButton("OK", null)
-                            .create().show();
+                            .create()
+                            .show();
                 });
                 return;
             }
 
-            SincronizacaoRequest request = new SincronizacaoRequest(cadastros);
+            // 🔹 Prepara request
+            SincronizacaoRequest request = new SincronizacaoRequest(cadastros, manutencoes, itens_manutencao);
+
+            // 🔹 Remove IDs antes de enviar
+            cadastros.forEach(c -> c.id = null);
+            manutencoes.forEach(m -> m.id = null);
+            itens_manutencao.forEach(i -> i.id = null);
+
+            int totalAbastecimentos = cadastros.size();
+            int totalManutencoes = manutencoes.size();
+            int totalItens = itens_manutencao.size();
+
+            // 🔹 Chama API
             service.sincronizarTudo(request).enqueue(new Callback<ResponseBody>() {
                 @Override
                 public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                    progressDialog.dismiss();
+                    runOnUiThread(() -> progressDialog.dismiss());
 
                     if (response.isSuccessful()) {
-                        // Atualiza todos de uma vez
+                        // 🔹 Atualiza dados localmente em thread separada
                         new Thread(() -> {
-                            for (AbastecimentoModel c : cadastros) {
-                                c.sit = "sincronizado";
-                            }
+                            cadastros.forEach(c -> c.sit = "sincronizado");
+                            manutencoes.forEach(m -> m.sit = "sincronizado");
+                            itens_manutencao.forEach(i -> i.sit = "sincronizado");
+
                             db.abastecimentoDAO().updateAll(cadastros);
+                            db.manutencaoDAO().updateAll(manutencoes);
+                            db.manutencaoItemDAO().updateAll(itens_manutencao);
+
+                            // 🔹 Feedback pro usuário na UI
+                            runOnUiThread(() -> {
+                                new AlertDialog.Builder(MainActivity.this)
+                                        .setTitle("Sincronizados!")
+                                        .setMessage("Abastecimentos: " + totalAbastecimentos + "\n"
+                                                + "Manutenções: " + totalManutencoes + "\n"
+                                                + "Itens: " + totalItens)
+                                        .setIcon(R.drawable.ic_success)
+                                        .setPositiveButton("OK", null)
+                                        .create()
+                                        .show();
+                            });
                         }).start();
 
-                        new android.app.AlertDialog.Builder(MainActivity.this)
-                                .setTitle("Sucesso")
-                                .setMessage("Foram sincronizados " + cadastros.size() + " abastecimentos!")
-                                .setIcon(R.drawable.ic_success)
-                                .setPositiveButton("OK", null)
-                                .create().show();
                     } else {
                         try {
                             String erroMsg = response.errorBody() != null
                                     ? response.errorBody().string()
                                     : "Erro desconhecido";
-                            new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
-                                    .setTitle("ERRO")
-                                    .setMessage("Falha: " + erroMsg)
-                                    .setIcon(R.drawable.ic_erro)
-                                    .setPositiveButton("OK", null)
-                                    .create().show();
+
+                            runOnUiThread(() -> {
+                                new AlertDialog.Builder(MainActivity.this)
+                                        .setTitle("ERRO")
+                                        .setMessage("Falha: " + erroMsg)
+                                        .setIcon(R.drawable.ic_erro)
+                                        .setPositiveButton("OK", null)
+                                        .create()
+                                        .show();
+                            });
+
                         } catch (Exception e) {
-                            showToastErro("Erro ao ler resposta: " + e.getMessage());
+                            runOnUiThread(() -> showToastErro("Erro ao ler resposta: " + e.getMessage()));
                         }
                     }
                 }
 
                 @Override
                 public void onFailure(Call<ResponseBody> call, Throwable t) {
-                    progressDialog.dismiss();
-                    showToastErro("Falha na comunicação: " + t.getMessage());
+                    runOnUiThread(() -> {
+                        progressDialog.dismiss();
+                        showToastErro("Falha na comunicação: " + t.getMessage());
+                    });
                 }
             });
+
         }).start();
     }
+
 
 
     private void zerar_dados_sincronizados() {

@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">DiarioBordoMelosa</string>
+
+    <string-array name="un_medida_item">
+        <item>Un medida</item>
+        <item value="pc">peça</item>
+        <item value="cx">caixa</item>
+        <item value="l">litro</item>
+        <item value="ml">mililitro</item>
+    </string-array>
+
 </resources>

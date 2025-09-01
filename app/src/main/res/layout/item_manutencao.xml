@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/item_borda"
+    android:padding="12dp">
+
+    <!-- Descrição ocupa mais espaço -->
+    <TextView
+        android:id="@+id/txt_descricao_item_lcto"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        android:text="descrição"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:ellipsize="end"
+        android:singleLine="true" />
+
+    <!-- Quantidade -->
+    <TextView
+        android:id="@+id/txt_qtd_item_lcto"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="qtd"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp" />
+
+    <!-- Unidade -->
+    <TextView
+        android:id="@+id/txt_un_item_lcto"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="un"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp" />
+
+    <!-- Botão excluir -->
+    <Button
+        android:id="@+id/btnExcluiItem"
+        android:layout_width="40dp"
+        android:layout_height="24dp"
+        android:background="@drawable/fundo_transparente"
+        android:contentDescription="Excluir item"
+        android:drawableLeft="@drawable/ic_remover"
+        android:drawablePadding="4dp" />
+
+</LinearLayout>

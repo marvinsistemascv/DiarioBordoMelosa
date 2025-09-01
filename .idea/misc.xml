@@ -3,11 +3,20 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/drawable-v24/fundo_transparente.xml" value="0.17552083333333332" />
+        <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/drawable-v24/item_borda.xml" value="0.2598958333333333" />
+        <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/drawable/bg_recycler_box.xml" value="0.24010416666666667" />
+        <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/drawable/borda_branca.xml" value="0.22395833333333334" />
+        <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/drawable/botao_bonito.xml" value="0.22395833333333334" />
+        <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/drawable/ic_add_item.xml" value="0.22395833333333334" />
         <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/layout/activity_main.xml" value="0.278125" />
         <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/layout/activity_qr_scanner.xml" value="0.3" />
+        <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/layout/dialog_abastece_manutencao.xml" value="0.33" />
         <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/layout/dialog_cad_motorista.xml" value="0.3" />
+        <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/layout/dialog_lancar_manutencao.xml" value="0.237012987012987" />
         <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/layout/dialog_lista_abastecimentos.xml" value="0.3" />
-        <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/layout/dialog_novo_abastecimento.xml" value="0.3" />
+        <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/layout/dialog_novo_abastecimento.xml" value="0.5" />
+        <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/layout/item_manutencao.xml" value="0.33" />
         <entry key="..\:/Projetos Android/DiarioBordoMelosa/app/src/main/res/menu/menu_main.xml" value="0.3" />
       </map>
     </option>

@@ -10,15 +10,20 @@
     <item
         android:id="@+id/menu_option_1"
         android:icon="@drawable/divider_line"
-        android:title="Motorista" />
+        android:title="Manutenções"/>
 
     <item
         android:id="@+id/menu_option_2"
         android:icon="@drawable/divider_line"
-        android:title="Sincronizar"/>
+        android:title="Motorista" />
 
     <item
         android:id="@+id/menu_option_3"
+        android:icon="@drawable/divider_line"
+        android:title="Sincronizar"/>
+
+    <item
+        android:id="@+id/menu_option_4"
         android:icon="@drawable/divider_line"
         android:title="Zerar Sincronizados"/>
 

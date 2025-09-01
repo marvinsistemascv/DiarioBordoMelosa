@@ -33,7 +33,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="40dp"
         android:gravity="center"
-        android:text="versão 3.0.0"
+        android:text="versão 3.0.1"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
         app:layout_constraintBottom_toTopOf="@+id/txt_nome_motorista"
