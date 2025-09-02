@@ -175,9 +175,10 @@ public class MainActivity extends AppCompatActivity {
         });
 
         try {
-            db = Room.databaseBuilder(getApplicationContext(), AppDatabase.class, "app-db")
+            db = Room.databaseBuilder(MainActivity.this, AppDatabase.class, "app-db")
                     .fallbackToDestructiveMigration()
                     .build();
+
         } catch (Exception e) {
             showToastErro("ERRO DB: " + e.getMessage());
         }
@@ -771,6 +772,7 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+
     private void sincronizar_cadastros() {
         ProgressDialog progressDialog = new ProgressDialog(this);
         progressDialog.setMessage("Enviando dados... Aguarde.");
@@ -778,25 +780,13 @@ public class MainActivity extends AppCompatActivity {
         progressDialog.show();
 
         new Thread(() -> {
-            // 🔹 Busca no banco (thread secundária)
             List<AbastecimentoModel> cadastros = db.abastecimentoDAO().pegar_abastecimentos_realizados();
             List<ManutencaoModel> manutencoes = db.manutencaoDAO().pegar_manutencoes_realizadas();
+            List<ManutencaoItem> itens_manutencao = db.manutencaoItemDAO().pegar_todas_realizadas();
 
-            List<Integer> ids_manutencao = manutencoes.stream()
-                    .map(item -> item.id)
-                    .collect(Collectors.toList());
-
-            final List<ManutencaoItem> itens_manutencao;
-            if (ids_manutencao != null && !ids_manutencao.isEmpty()) {
-                itens_manutencao = db.manutencaoItemDAO().pegar_itens_manutencoes_realizadas(ids_manutencao);
-            } else {
-                itens_manutencao = Collections.emptyList();
-            }
-
-
-            // ⚠️ Verifica se tem algo pra sincronizar
             if ((cadastros == null || cadastros.isEmpty()) &&
-                    (manutencoes == null || manutencoes.isEmpty())) {
+                    (manutencoes == null || manutencoes.isEmpty()) &&
+                    (itens_manutencao == null || itens_manutencao.isEmpty())) {
 
                 runOnUiThread(() -> {
                     progressDialog.dismiss();
@@ -811,48 +801,33 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // 🔹 Prepara request
+            // 🔹 monta request direto (sem alterar os objetos locais)
             SincronizacaoRequest request = new SincronizacaoRequest(cadastros, manutencoes, itens_manutencao);
-
-            // 🔹 Remove IDs antes de enviar
-            cadastros.forEach(c -> c.id = null);
-            manutencoes.forEach(m -> m.id = null);
-            itens_manutencao.forEach(i -> i.id = null);
 
             int totalAbastecimentos = cadastros.size();
             int totalManutencoes = manutencoes.size();
             int totalItens = itens_manutencao.size();
 
-            // 🔹 Chama API
             service.sincronizarTudo(request).enqueue(new Callback<ResponseBody>() {
                 @Override
                 public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                     runOnUiThread(() -> progressDialog.dismiss());
 
                     if (response.isSuccessful()) {
-                        // 🔹 Atualiza dados localmente em thread separada
-                        new Thread(() -> {
-                            cadastros.forEach(c -> c.sit = "sincronizado");
-                            manutencoes.forEach(m -> m.sit = "sincronizado");
-                            itens_manutencao.forEach(i -> i.sit = "sincronizado");
+                        // 🔹 chama método que atualiza 'sit' só após sucesso
+                        atualizarSitLocal(cadastros, manutencoes, itens_manutencao);
 
-                            db.abastecimentoDAO().updateAll(cadastros);
-                            db.manutencaoDAO().updateAll(manutencoes);
-                            db.manutencaoItemDAO().updateAll(itens_manutencao);
-
-                            // 🔹 Feedback pro usuário na UI
-                            runOnUiThread(() -> {
-                                new AlertDialog.Builder(MainActivity.this)
-                                        .setTitle("Sincronizados!")
-                                        .setMessage("Abastecimentos: " + totalAbastecimentos + "\n"
-                                                + "Manutenções: " + totalManutencoes + "\n"
-                                                + "Itens: " + totalItens)
-                                        .setIcon(R.drawable.ic_success)
-                                        .setPositiveButton("OK", null)
-                                        .create()
-                                        .show();
-                            });
-                        }).start();
+                        runOnUiThread(() -> {
+                            new AlertDialog.Builder(MainActivity.this)
+                                    .setTitle("Sincronizados!")
+                                    .setMessage("Abastecimentos: " + totalAbastecimentos + "\n"
+                                            + "Manutenções: " + totalManutencoes + "\n"
+                                            + "Itens: " + totalItens)
+                                    .setIcon(R.drawable.ic_success)
+                                    .setPositiveButton("OK", null)
+                                    .create()
+                                    .show();
+                        });
 
                     } else {
                         try {
@@ -888,12 +863,28 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
+    private void atualizarSitLocal(List<AbastecimentoModel> cadastros,
+                                   List<ManutencaoModel> manutencoes,
+                                   List<ManutencaoItem> itens_manutencao) {
+
+        new Thread(() -> {
+            cadastros.forEach(c -> c.sit = "sincronizado");
+            manutencoes.forEach(m -> m.sit = "sincronizado");
+            itens_manutencao.forEach(i -> i.sit = "sincronizado");
+
+            db.abastecimentoDAO().updateAll(cadastros);
+            db.manutencaoDAO().updateAll(manutencoes);
+            db.manutencaoItemDAO().updateAll(itens_manutencao);
+        }).start();
+    }
 
 
     private void zerar_dados_sincronizados() {
         new Thread(() -> {
             try {
                 db.abastecimentoDAO().apagar_sincronizados();
+                db.manutencaoItemDAO().apagar_sincronizados();
+                db.manutencaoDAO().apagar_sincronizados();
                 runOnUiThread(() -> {
                     try {
                         showToast("Sincronizados apagados!");

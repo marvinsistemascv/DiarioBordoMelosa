@@ -27,8 +27,8 @@ public interface ManutencaoItemDAO {
     @Query("DELETE FROM manutencao_item WHERE id =:id")
     void excluir_item(Integer id);
 
-    @Query("DELETE FROM manutencao_item WHERE manutencaoId =:id_manutencao")
-    void apagar_sincronizados(Integer id_manutencao);
+    @Query("DELETE FROM manutencao_item WHERE sit ='lancado'")
+    void apagar_sincronizados();
 
     @Query("DELETE FROM manutencao_item WHERE id IN (:ids)")
     void apagar_itens_manutencao(List<Integer> ids);
